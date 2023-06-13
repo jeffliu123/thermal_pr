@@ -14,8 +14,8 @@ win = [0]*sliding_window
 def calculate_snr(max_index,fft_result_real):
     signal_sum = 0
     noise_sum = np.sum(fft_result_real)
-    lower_bound = max_index-2#6
-    upper_bound = max_index+3#7
+    lower_bound = max_index-5#6
+    upper_bound = max_index+6#7
     for i in range(lower_bound,upper_bound):
         try:
             if i < 0:
@@ -80,6 +80,8 @@ def main():
     max_thermalframe = len(thermalfile)
     global prev_result
     csv_list = []
+    c_count = 0
+    c_count_flag = True
     # while frame_count < len(df):
     while True:
         data,thermal_frame_count  = select_real_off.real_off(realtime_flag,path,timer,thermal_frame_count,thermalfile,max_thermalframe,data_comp)
@@ -121,60 +123,76 @@ def main():
                 avg_data_list.pop(0)
             if len(avg_data_list) == 128:
                 # if (frame_count-128)%9 == 0:
-                # if (thermal_frame_count-128)%9 == 0:
-                avg_data_array = np.array(avg_data_list)
-                b, a = signal.butter(4, [0.8, 1.8], 'bandpass', fs=sampling_rate)#1.33,1.5
-                filtedData = signal.filtfilt(b, a, avg_data_array)#15
-                filtedData = filtedData*75
-                b, a = signal.butter(4, [1, 1.67], 'bandpass', fs=sampling_rate)
-                filtedData = signal.filtfilt(b, a, filtedData)
-                filtedData = filtedData*120
-                padding = padded_length - len(filtedData)
-                padded_signal = np.pad(filtedData,(0,padding),'constant')
-                fft_result = np.fft.fft(padded_signal)
-                fft_result_real = np.real(fft_result)
-                fft_result_real = fft_result_real[0:FFT_size//2]
-                fft_result_real = np.abs(fft_result_real)
-                # fft_result_real = fft_result_real[119:200]#60,110
-                max_index = np.argmax(fft_result_real)
-                snr = calculate_snr(max_index,fft_result_real)
-                second_largest_index = find_kth_largest_index(fft_result_real,2)
-                snr1 = calculate_snr(second_largest_index,fft_result_real)
-                third_largest_index = find_kth_largest_index(fft_result_real,3)
-                snr2 = calculate_snr(third_largest_index,fft_result_real)
-                print('snr: ',snr,'snr1: ',snr1,'snr2: ',snr2)
-                print('=======')
-                print('max_index: ',max_index,'second_largest_index: ',second_largest_index,'third_largest_index: ',third_largest_index)
-                print('=======')
-                PR_result = sampling_rate/FFT_size*(max_index+100)*60
-                PR_result = round(PR_result,0)
-                PR_result1 = sampling_rate/FFT_size*(second_largest_index+100)*60
-                PR_result1 = round(PR_result1,0)
-                PR_result2 = sampling_rate/FFT_size*(third_largest_index+100)*60
-                PR_result2 = round(PR_result2,0)
-                print('---->>',PR_result)
-                print('---->>',PR_result1)
-                print('---->>',PR_result2)
+                if (thermal_frame_count-128)%9 == 0:
+                    ans = []
+                    avg_data_array = np.array(avg_data_list)
+                    b, a = signal.butter(4, [0.8, 1.67], 'bandpass', fs=sampling_rate)#1.33,1.5
+                    filtedData = signal.filtfilt(b, a, avg_data_array)#15
+                    # filtedData = filtedData*75
+                    # b, a = signal.butter(4, [1, 1.67], 'bandpass', fs=sampling_rate)
+                    # filtedData = signal.filtfilt(b, a, filtedData)
+                    # filtedData = filtedData*120
+                    padding = padded_length - len(filtedData)
+                    padded_signal = np.pad(filtedData,(0,padding),'constant')
+                    fft_result = np.fft.fft(padded_signal)
+                    fft_result_real = np.real(fft_result)
+                    fft_result_real = fft_result_real[0:FFT_size//2]
+                    fft_result_real = np.abs(fft_result_real)
+                    fft_result_real = fft_result_real[119:200]#60,110
+                    max_index = np.argmax(fft_result_real)
+                    snr = calculate_snr(max_index,fft_result_real)
+                    snr = round(snr,2)
+                    second_largest_index = find_kth_largest_index(fft_result_real,2)
+                    snr1 = calculate_snr(second_largest_index,fft_result_real)
+                    snr1 = round(snr1,2)
+                    third_largest_index = find_kth_largest_index(fft_result_real,3)
+                    snr2 = calculate_snr(third_largest_index,fft_result_real)
+                    snr2 = round(snr2,2)
+                    print('snr: ',snr,'snr1: ',snr1,'snr2: ',snr2)
+                    print('=======')
+                    print('max_index: ',max_index,'second_largest_index: ',second_largest_index,'third_largest_index: ',third_largest_index)
+                    print('=======')
+                    PR_result = sampling_rate/FFT_size*(max_index+119)*60
+                    PR_result = round(PR_result,0)
+                    PR_result1 = sampling_rate/FFT_size*(second_largest_index+119)*60
+                    PR_result1 = round(PR_result1,0)
+                    PR_result2 = sampling_rate/FFT_size*(third_largest_index+119)*60
+                    PR_result2 = round(PR_result2,0)
+                    print('---->>',PR_result)
+                    print('---->>',PR_result1)
+                    print('---->>',PR_result2)
+                    ans.append([snr,max_index,PR_result])
+                    ans.append([snr1,second_largest_index,PR_result1])
+                    ans.append([snr2,third_largest_index,PR_result2])
+                    snr_bpm_list_sorted = sorted(ans, key=lambda x: x[0])
+                    print(snr_bpm_list_sorted)
+                    print(snr_bpm_list_sorted[2][2])
             # if (frame_count-128)%9 == 0:
             # if (thermal_frame_count-128)%9 == 0:
-                if lock == True:
-                    prev_result = PR_result
-                    lock = False
-                else:
-                    if abs(PR_result-prev_result)>15:
-                        PR_result = prev_result
+                    if lock == True:
+                        prev_result = snr_bpm_list_sorted[2][2]
+                        lock = False
                     else:
-                        prev_result = PR_result
-                final_result = MOV_AVG_PR(PR_result)
-                final_result = round(final_result,0)
-                print('--------->>',final_result)
-                csv_list.append(final_result)
+                        if abs(snr_bpm_list_sorted[2][2]-prev_result) > 9 and c_count_flag == True:
+                            snr_bpm_list_sorted[2][2] = prev_result
+                            c_count += 1
+                            print('---->>>>>>>>',c_count)
+                            if c_count >= 15:
+                                c_count_flag = False
+                        else:
+                            c_count = 0
+                            c_count_flag = True
+                            prev_result = snr_bpm_list_sorted[2][2]
+                    final_result = MOV_AVG_PR(snr_bpm_list_sorted[2][2])
+                    final_result = round(final_result,0)
+                    print('--------->>',final_result)
+                    csv_list.append(final_result)
                 # print('--------->>',PR_result)
                 # print(max_index)
-                plt.ion()
-                draw_fft(fft_result_real)
+                # plt.ion()
+                # draw_fft(fft_result_real)
             # if frame_count == 1578:
-            if thermal_frame_count == 744:
+            if thermal_frame_count == 774:
                 data_PR = pd.DataFrame(csv_list)
                 data_PR.to_csv(path_csv+'PR_shints_paper.csv', index=False, sep= ",", header=None )
                 print('success!!!!')
